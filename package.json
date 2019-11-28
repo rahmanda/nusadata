@@ -1,0 +1,19 @@
+{
+  "name": "vizmap",
+  "version": "0.1.0",
+  "description": "Collection of visualizations",
+  "main": "index.js",
+  "scripts": {
+    "test": "yarn test"
+  },
+  "keywords": [
+    "map",
+    "visualization",
+    "d3"
+  ],
+  "author": "Rahmanda Wibowo <rahmandawibowo@gmail.com>",
+  "license": "MIT",
+  "dependencies": {
+    "express": "^4.17.1"
+  }
+}
