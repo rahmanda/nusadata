@@ -4,7 +4,8 @@
   "description": "Collection of visualizations",
   "main": "index.js",
   "scripts": {
-    "test": "yarn test"
+    "test": "yarn test",
+    "start": "node index.js"
   },
   "keywords": [
     "map",

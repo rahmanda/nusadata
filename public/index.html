@@ -2,10 +2,112 @@
 <html>
   <head>
     <title>Map Visualization</title>
+    <style>
+			body {
+				font-family: "Helvetica Neue", Helvetica, sans-serif;
+				font-size: 14px;
+				color: #333;
+			}
+      #content {
+        margin: 0 auto;
+        max-width: 1024px;
+      }
+      .legend-stop {
+        font-size: 0.65rem;
+      }
+    </style>
   </head>
+
   <body>
+    <div id="content"></div>
+
     <script src="https://d3js.org/d3.v5.min.js"></script>
     <script>
+      const projection = d3.geoEquirectangular()
+        .scale(1000)
+        .translate([-1650, 120]);
+      const geoGenerator = d3.geoPath()
+        .projection(projection);
+      const color = d3.scaleQuantize([50, 10000], d3.schemeOranges[7]);
+
+      function render(geojson, data, generator) {
+        const svg = d3.select('#content')
+          .append('svg')
+          .attr('viewBox', [0, 0, 800, 400]);
+
+        svg.append('g')
+					.selectAll('path')
+					.data(geojson.features)
+          .join('path')
+          .attr('fill', d => color(data.get(d.properties.slug)))
+          .attr('stroke', 'white')
+          .attr('stroke-linejoin', 'round')
+          .attr('d', generator);
+
+        return svg;
+      }
+
+      function renderLegend(svg) {
+        const linearGradient = svg.append('defs')
+          .append('linearGradient')
+          .attr('id', 'linear-gradient')
+          .attr('x1', '0%')
+          .attr('y1', '0%')
+          .attr('x2', '100%')
+          .attr('y2', '0%');
+
+        const stops = [0, 1500, 3000, 4500, 6000, 7500, 9000, 10000];
+
+        linearGradient.selectAll('stop')
+          .data(stops)
+          .join('stop')
+          .attr('offset', (d, index) => `${Math.floor((index + 1) / stops.length * 100)}%`)
+          .attr('stop-color', d => color(d))
+
+        const legendWrapper = svg.append('g')
+          .style('transform', 'translate(calc(50% - 150px), 375px)');
+
+        legendWrapper.append('rect')
+          .attr('width', 300)
+          .attr('height', 5)
+          .style('fill', 'url(#linear-gradient)');
+
+        const texts = stops.slice(0, stops.length - 1);
+        const textWrapper = legendWrapper.append('g')
+          .attr('transform', 'translate(-35, 20)');
+
+        texts.forEach((text, index) => {
+          if (index % 2 == 0) {
+            textWrapper
+              .append('text')
+              .attr('x', Math.floor((index + 1) / stops.length * 300))
+              .attr('y', 0)
+              .style('text-anchor', 'middle')
+              .attr('class', 'legend-stop')
+              .text(text);
+          }
+        });
+
+        legendWrapper.append('text')
+          .style('text-anchor', 'middle')
+          .attr('x', 150)
+          .attr('y', -12)
+          .text('Number of dengue patients (2018)');
+
+        return svg;
+      }
+
+      function fetchResources() {
+        return Promise.all([fetch('/ast/id.geojson'), fetch('/ast/dengueindonesia.csv')]);
+      }
+
+
+      fetchResources()
+				.then(async ([geojson, data]) => {
+          const map = new Map(d3.csvParse(await data.text(), ({slug, total_cases}) => [slug, +total_cases]));
+          renderLegend(render(await geojson.json(), map, geoGenerator));
+				});
     </script>
   </body>
+
 </html>
