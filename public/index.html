@@ -2,33 +2,48 @@
 <html>
   <head>
     <title>Map Visualization</title>
+    <link href="https://unpkg.com/tailwindcss@^1.0/dist/tailwind.min.css" rel="stylesheet">
     <style>
-			body {
-				font-family: "Helvetica Neue", Helvetica, sans-serif;
-				font-size: 14px;
-				color: #333;
-			}
-      #content {
-        margin: 0 auto;
-        max-width: 1024px;
-      }
       .legend-stop {
         font-size: 0.65rem;
+      }
+      #legend-title {
+        font-size: 0.85rem;
+      }
+      .province:hover {
+        cursor: pointer;
       }
     </style>
   </head>
 
-  <body>
-    <div id="content"></div>
+  <body class="relative">
+    <h1 id="title" class="text-2xl text-center pt-4">Cases of Dengue Fever in Indonesia (2018)</h1>
+    <div id="content" class="max-w-4xl my-0 mx-auto"></div>
+    <button class="btn-prev bg-gray-100 hover:bg-gray-200 focus:bg-gray-300 py-2 px-6 absolute left-0 top-0 h-screen shadow" type="button">
+      <svg viewBox="0 0 24 24" width="24" height="24" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round">
+        <polyline points="15 18 9 12 15 6"></polyline>
+      </svg>
+    </button>
+    <button class="btn-next bg-gray-100 hover:bg-gray-200 focus:bg-gray-300 py-2 px-6 absolute right-0 top-0 h-screen shadow" type="button">
+      <svg viewBox="0 0 24 24" width="24" height="24" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round">
+        <polyline points="9 18 15 12 9 6"></polyline>
+      </svg>
+    </button>
 
     <script src="https://d3js.org/d3.v5.min.js"></script>
+    <script src="https://unpkg.com/popper.js@1"></script>
+    <script src="https://unpkg.com/tippy.js@5"></script>
     <script>
+      const MAX_YEAR = 2018;
+      const MIN_YEAR = 2011;
+      var currentYear = MAX_YEAR;
+
       const projection = d3.geoEquirectangular()
         .scale(1000)
         .translate([-1650, 120]);
       const geoGenerator = d3.geoPath()
         .projection(projection);
-      const color = d3.scaleQuantize([50, 10000], d3.schemeOranges[7]);
+      const color = d3.scaleQuantize([0, 10000], d3.schemeOranges[7]);
 
       function render(geojson, data, generator) {
         const svg = d3.select('#content')
@@ -40,9 +55,20 @@
 					.data(geojson.features)
           .join('path')
           .attr('fill', d => color(data.get(d.properties.slug)))
+          .attr('data-name', d => d.properties.state)
+          .attr('data-tooltip', d => `${d.properties.state} ${data.get(d.properties.slug)}`)
           .attr('stroke', 'white')
           .attr('stroke-linejoin', 'round')
-          .attr('d', generator);
+          .attr('d', generator)
+          .attr('id', d => d.properties.slug)
+          .attr('class', 'province')
+          .on('mouseover', function () {
+            svg.selectAll('.province').transition().style('opacity', 0.5);
+            d3.select(this).transition().style('opacity', 1);
+          })
+          .on('mouseleave', function () {
+            svg.selectAll('.province').transition().style('opacity', 1);
+          });
 
         return svg;
       }
@@ -92,21 +118,65 @@
           .style('text-anchor', 'middle')
           .attr('x', 150)
           .attr('y', -12)
-          .text('Number of dengue patients (2018)');
+          .attr('id', 'legend-title')
+          .text('Number of cases');
 
         return svg;
       }
 
       function fetchResources() {
-        return Promise.all([fetch('/ast/id.geojson'), fetch('/ast/dengueindonesia.csv')]);
+        return Promise.all([fetch('/ast/id.geojson'), fetch('/ast/dengue-indonesia-2018.csv')]);
       }
 
+      async function transformToMap(data) {
+        return new Map(d3.csvParse(await data.text(), ({slug, total_cases}) => [slug, +total_cases]));
+      }
+
+      async function rerender(year) {
+        const data = await transformToMap(await fetch(`/ast/dengue-indonesia-${year}.csv`));
+        data.forEach((value, key) => {
+          const province = d3.select(`#${key}`);
+          if (province) {
+            province
+              .transition()
+              .attr('fill', color(value));
+            try {
+              document.getElementById(`${key}`)._tippy.setContent(`${province.attr('data-name')} ${value}`);
+            } catch (e) {
+              console.log(key);
+            }
+          }
+        });
+        d3.select('#title').text(`Cases of Dengue Fever in Indonesia (${year})`);
+      }
 
       fetchResources()
 				.then(async ([geojson, data]) => {
-          const map = new Map(d3.csvParse(await data.text(), ({slug, total_cases}) => [slug, +total_cases]));
+          const map = await transformToMap(data);
           renderLegend(render(await geojson.json(), map, geoGenerator));
+          tippy('.province', {
+            followCursor: 'initial',
+            trigger: 'click',
+            content(ref) {
+              return ref.getAttribute('data-tooltip');
+            },
+          });
 				});
+
+      document.querySelector('.btn-next').addEventListener('click', () => {
+        if (currentYear < MAX_YEAR) {
+          currentYear += 1;
+          rerender(currentYear);
+        }
+      });
+
+      document.querySelector('.btn-prev').addEventListener('click', () => {
+        if (currentYear > MIN_YEAR) {
+          currentYear -= 1;
+          rerender(currentYear);
+        }
+      });
+
     </script>
   </body>
 
