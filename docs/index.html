@@ -1,7 +1,7 @@
 <!doctype html>
 <html>
   <head>
-    <title>Map Visualization</title>
+    <title>Case of Dengue Fever In Indonesia</title>
     <link href="https://unpkg.com/tailwindcss@^1.0/dist/tailwind.min.css" rel="stylesheet">
     <style>
       .legend-stop {
@@ -125,7 +125,7 @@
       }
 
       function fetchResources() {
-        return Promise.all([fetch('/ast/id.geojson'), fetch('/ast/dengue-indonesia-2018.csv')]);
+        return Promise.all([fetch('ast/id.geojson'), fetch('ast/dengue-indonesia-2018.csv')]);
       }
 
       async function transformToMap(data) {
@@ -133,7 +133,7 @@
       }
 
       async function rerender(year) {
-        const data = await transformToMap(await fetch(`/ast/dengue-indonesia-${year}.csv`));
+        const data = await transformToMap(await fetch(`ast/dengue-indonesia-${year}.csv`));
         data.forEach((value, key) => {
           const province = d3.select(`#${key}`);
           if (province) {
