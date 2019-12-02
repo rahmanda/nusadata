@@ -63,11 +63,11 @@
           .attr('id', d => d.properties.slug)
           .attr('class', 'province')
           .on('mouseover', function () {
-            svg.selectAll('.province').transition().style('opacity', 0.5);
-            d3.select(this).transition().style('opacity', 1);
+            svg.selectAll('.province').transition().style('opacity', 0.5).attr('stroke', 'white');
+            d3.select(this).transition().style('opacity', 1).attr('stroke', 'black');
           })
           .on('mouseleave', function () {
-            svg.selectAll('.province').transition().style('opacity', 1);
+            svg.selectAll('.province').transition().style('opacity', 1).attr('stroke', 'white');
           });
 
         return svg;
@@ -155,8 +155,7 @@
           const map = await transformToMap(data);
           renderLegend(render(await geojson.json(), map, geoGenerator));
           tippy('.province', {
-            followCursor: 'initial',
-            trigger: 'click',
+            followCursor: true,
             content(ref) {
               return ref.getAttribute('data-tooltip');
             },
